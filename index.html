@@ -49,11 +49,8 @@ button.main-btn {
   width: 50px; height: 50px; border-radius: 50%; position: absolute; 
   display: flex; align-items: center; justify-content: center; 
   font-size: 11px; font-weight: bold; z-index: 30; 
-  transform: translate(-50%, -50%); /* จัดให้กึ่งกลางวงกลมตรงกับพิกัดเส้น */
+  transform: translate(-50%, -50%);
 }
-
-.game-over-flash { animation: flashEffect 0.4s; }
-@keyframes flashEffect { 0%, 100% { background: rgba(0,0,0,0.5); } 50% { background: rgba(255, 0, 68, 0.4); } }
 
 input#typer {
   width: 80%; padding: 12px; border-radius: 10px; border: 2px solid var(--neon);
@@ -97,7 +94,7 @@ setInterval(() => {
   if(idle > 1000) { idleDurations.push(idle); lastActivity = Date.now(); }
 }, 1000);
 
-/* --- STATS CALCULATOR (WITH VARIANCE) --- */
+/* --- STATS CALCULATOR --- */
 function percentile(arr,p){
   let s=[...arr].sort((a,b)=>a-b);
   if(!s.length) return 0;
@@ -240,8 +237,6 @@ function initReflex(cv) {
 }
 
 function initSteadyPath(cv) {
-  // SVG Path: M (Start) -> H (Horizontal) -> V (Vertical) -> H -> V -> H (Goal)
-  // พิกัดถูกคำนวณให้ Start อยู่ที่ 60,60 และ Goal อยู่ที่ 540,300
   cv.innerHTML = `
     <div class="maze-container" id="mazeCont">
       <svg width="600" height="360" viewBox="0 0 600 360" style="position:absolute;">
@@ -252,18 +247,13 @@ function initSteadyPath(cv) {
       <div id="goal-node" class="maze-point" style="left:540px; top:300px; background:var(--neon); color:#000;">GOAL</div>
     </div>
   `;
-  const cont = document.getElementById("mazeCont");
   const trig = document.getElementById("mazeTrigger");
   const goal = document.getElementById("goal-node");
 
   trig.onmouseleave = (e) => {
-    // ตรวจสอบว่าเมาส์หลุดออกไปที่เป้าหมายหรือไม่ ถ้าไม่ใช่คือ "หลุด"
     if(e.relatedTarget !== goal) {
-      cont.classList.add("game-over-flash");
-      setTimeout(() => {
-        cont.classList.remove("game-over-flash");
-        alert("⚠️ มือสั่น! คุณทำเมาส์หลุดจากเส้นทาง กรุณาเริ่มใหม่จากจุด START");
-      }, 50);
+      // แจ้งเตือนทันทีโดยไม่มีเอฟเฟกต์สีแดง
+      alert("⚠️ มือสั่น! คุณทำเมาส์หลุดจากเส้นทาง กรุณาเริ่มใหม่จากจุด START");
     }
   };
 
