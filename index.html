@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>ห้องแล็บพฤติกรรม: 5 บททดสอบ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ห้องแล็บพฤติกรรม: 5 บททดสอบมหาโหด</title>
 <style>
 :root { --neon: #00ffcc; --bg: #0f172a; --accent: #ff007a; }
 body {
@@ -38,20 +39,33 @@ button.main-btn {
 }
 
 #exportBtn { display: none; margin: 20px auto; background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+#exportBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 input#typer {
   width: 80%; padding: 12px; border-radius: 10px; border: 2px solid var(--neon);
   background: transparent; color: white; font-size: 1.5rem; text-align: center; margin-top: 40px; outline: none;
 }
 
-/* Maze S-Curve UI */
+/* Maze & Laser Styles */
 .maze-container { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
-.maze-road { fill: none; stroke: rgba(255, 255, 255, 0.15); stroke-width: 45; stroke-linecap: round; stroke-linejoin: round; }
-.maze-trigger { fill: none; stroke: transparent; stroke-width: 50; stroke-linecap: round; cursor: crosshair; }
-.maze-point { width: 50px; height: 50px; border-radius: 50%; position: absolute; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+.maze-road { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 50; stroke-linecap: round; }
+.maze-trigger { fill: none; stroke: transparent; stroke-width: 55; cursor: crosshair; }
+.maze-point { width: 50px; height: 50px; border-radius: 50%; position: absolute; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; z-index: 30; }
 #start-node { background: var(--accent); left: 60px; top: 60px; box-shadow: 0 0 15px var(--accent); }
-#goal-node { background: var(--neon); right: 60px; bottom: 60px; color: #000; box-shadow: 0 0 15px var(--neon); cursor: pointer; }
-#save-status { margin-top: 10px; font-size: 0.9rem; color: #aaa; }
+#goal-node { background: var(--neon); right: 60px; bottom: 60px; color: #000; box-shadow: 0 0 15px var(--neon); }
+
+.laser { position: absolute; background: #ff0000; box-shadow: 0 0 10px #ff0000; z-index: 25; }
+.laser-h { width: 100%; height: 4px; left: 0; }
+.laser-v { width: 4px; height: 100%; top: 0; }
+
+@keyframes laserMoveV { 0%, 100% { left: 30%; } 50% { left: 70%; } }
+@keyframes laserMoveH { 0%, 100% { top: 20%; } 50% { top: 80%; } }
+@keyframes laserRotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.game-over-flash { animation: flashRed 0.5s; }
+@keyframes flashRed { 0%, 100% { background: rgba(0,0,0,0.4); } 50% { background: rgba(255,0,0,0.3); } }
+
+#save-status { margin-top: 15px; font-size: 0.9rem; color: #888; }
 </style>
 </head>
 <body>
@@ -59,11 +73,14 @@ input#typer {
 <div class="container">
   <div class="progress-container"><div id="overallBar" class="progress-bar"></div></div>
   <div id="challengeArea"></div>
-  <button id="exportBtn" class="main-btn" onclick="exportData()">💾 บันทึกข้อมูลพฤติกรรม</button>
+  <button id="exportBtn" class="main-btn" onclick="exportData()">💾 ส่งข้อมูลไปที่ฐานข้อมูล (Neon DB)</button>
   <div id="save-status"></div>
 </div>
 
 <script>
+/* -----------------------------------------------------------
+   1. Data Collection Core (การเก็บข้อมูล)
+----------------------------------------------------------- */
 let mouseIntervals=[], clickIntervals=[], keyIntervals=[], idleDurations=[];
 let lastMouse=null, lastClick=null, lastKey=null, lastActivity=Date.now();
 
@@ -88,8 +105,12 @@ setInterval(() => {
   if(idle > 1000) { idleDurations.push(idle); lastActivity = Date.now(); }
 }, 1000);
 
+/* -----------------------------------------------------------
+   2. Statistics Math (การคำนวณสถิติ)
+----------------------------------------------------------- */
 function percentile(arr,p){
   let s=[...arr].sort((a,b)=>a-b);
+  if(s.length === 0) return 0;
   let i=(p/100)*(s.length-1);
   let l=Math.floor(i), u=Math.ceil(i);
   return l===u ? s[i] : s[l]+(s[u]-s[l])*(i-l);
@@ -101,20 +122,23 @@ function removeOutliersIQR(arr){
   return arr.filter(v => v >= (Q1-1.5*IQR) && v <= (Q3+1.5*IQR));
 }
 function computeFullStats(raw){
-  if(raw.length === 0) return { mean: 0, std: 0, variance: 0, count: 0, raw_count: 0 };
+  if(raw.length === 0) return { mean: 0, std: 0, count: 0 };
   let filtered = removeOutliersIQR(raw);
   if(filtered.length === 0) filtered = raw;
   let m = filtered.reduce((a,b)=>a+b,0)/filtered.length;
   let v = filtered.reduce((a,b)=>a+(b-m)**2,0)/filtered.length;
-  return { mean: Math.round(m), std: Math.round(Math.sqrt(v)), variance: Math.round(v), count: filtered.length, raw_count: raw.length };
+  return { mean: Math.round(m), std: Math.round(Math.sqrt(v)), count: filtered.length, raw_count: raw.length };
 }
 
+/* -----------------------------------------------------------
+   3. Game Logic (ตรรกะเกม)
+----------------------------------------------------------- */
 const stages = [
-  { name: "นักล่าเงา", desc: "คลิกเป้าหมายให้ครบ 10 จุด", type: "click_task" },
+  { name: "นักล่าเงา", desc: "คลิกเป้าหมายให้ครบ 10 จุด (ไม่จับเวลา)", type: "click_task" },
   { name: "วงโคจรนีออน", desc: "ลากเมาส์ตามเป้าหมายที่เคลื่อนที่", time: 10, type: "move" },
   { name: "นักพิมพ์มือโปร", desc: "พิมพ์คำที่กำหนดให้ถูกต้อง", type: "type_task" },
-  { name: "ปฏิกิริยาตอบสนอง", desc: "คลิกให้ทันตอนเปลี่ยนสี 3 ครั้ง", type: "reflex_task" },
-  { name: "เขาวงกตนีออน", desc: "ลากเมาส์ตามเส้นทางสีขาว ห้ามออกนอกเส้นทาง!", type: "maze_s" }
+  { name: "ปฏิกิริยาตอบสนอง", desc: "คลิกหน้าจอให้ทันตอนเปลี่ยนสี 3 ครั้ง", type: "reflex_task" },
+  { name: "ภารกิจหนีเลเซอร์", desc: "ลากเมาส์ไปที่ GOAL โดยห้ามโดนเลเซอร์!", type: "laser_evasion" }
 ];
 
 let currentStage = 0;
@@ -125,8 +149,8 @@ function renderStage() {
   if(currentStage >= stages.length) {
     document.getElementById("challengeArea").innerHTML = `
       <div class="card">
-        <h2>ภารกิจเสร็จสิ้น! 🏆</h2>
-        <p>ประมวลผลสถิติเรียบร้อยแล้ว ข้อมูลพฤติกรรมของคุณพร้อมสำหรับการบันทึก</p>
+        <h2>วิเคราะห์ข้อมูลเสร็จสิ้น! 🏆</h2>
+        <p>คุณได้ทำการทดสอบครบทุกด่านแล้ว ข้อมูลพฤติกรรมถูกรวบรวมไว้เรียบร้อย</p>
       </div>`;
     document.getElementById("exportBtn").style.display = "block";
     return;
@@ -134,7 +158,7 @@ function renderStage() {
   let s = stages[currentStage];
   document.getElementById("challengeArea").innerHTML = `
     <div class="card">
-      <small>ด่านที่ ${currentStage + 1} / ${stages.length}</small>
+      <small>STAGE ${currentStage + 1} / ${stages.length}</small>
       <h2>${s.name}</h2>
       <p>${s.desc}</p>
       <div class="timer" id="timeDisplay">${s.time ? s.time + ' วินาที' : '--'}</div>
@@ -144,23 +168,16 @@ function renderStage() {
     </div>`;
 }
 
-function finishStage() {
-    clearInterval(timer);
-    currentStage++;
-    document.getElementById("overallBar").style.width = (currentStage/stages.length*100) + "%";
-    renderStage();
-}
-
 function startStage() {
   let s = stages[currentStage];
   const canvas = document.getElementById("gameCanvas");
   canvas.innerHTML = "";
 
-  if(s.type === "click_task") initClickTaskGame(canvas);
-  if(s.type === "move") initMoveGame(canvas);
-  if(s.type === "type_task") initTypeTaskGame(canvas);
-  if(s.type === "reflex_task") initReflexTaskGame(canvas);
-  if(s.type === "maze_s") initMazeSGame(canvas);
+  if(s.type === "click_task") initClickTask(canvas);
+  if(s.type === "move") initMoveTask(canvas);
+  if(s.type === "type_task") initTypeTask(canvas);
+  if(s.type === "reflex_task") initReflexTask(canvas);
+  if(s.type === "laser_evasion") initLaserTask(canvas);
 
   if(s.time) {
     timeLeft = s.time;
@@ -172,10 +189,18 @@ function startStage() {
   }
 }
 
-function initClickTaskGame(cv) {
+function finishStage() {
+    clearInterval(timer);
+    currentStage++;
+    document.getElementById("overallBar").style.width = (currentStage/stages.length*100) + "%";
+    renderStage();
+}
+
+// STAGE 1
+function initClickTask(cv) {
   let count = 0;
   function spawn() {
-    cv.innerHTML = `<div style="padding:15px">คลิกไปแล้ว: ${count}/10</div>`;
+    cv.innerHTML = `<div style="padding:15px">Progress: ${count}/10</div>`;
     let t = document.createElement("div"); t.className = "target";
     t.style.left = Math.random()*85+"%"; t.style.top = Math.random()*60+20+"%";
     t.innerText = "🎯"; 
@@ -185,21 +210,24 @@ function initClickTaskGame(cv) {
   spawn();
 }
 
-function initMoveGame(cv) {
+// STAGE 2
+function initMoveTask(cv) {
   let t = document.createElement("div"); t.className = "target"; t.innerText = "🛸"; cv.appendChild(t);
   let a = 0;
   function anim() { 
     if(currentStage !== 1) return; 
-    a += 0.03; t.style.left = (50 + Math.cos(a)*35)+"%"; t.style.top = (50 + Math.sin(a*0.8)*35)+"%"; requestAnimationFrame(anim); 
+    a += 0.03; t.style.left = (50 + Math.cos(a)*35)+"%"; t.style.top = (50 + Math.sin(a*0.8)*35)+"%"; 
+    requestAnimationFrame(anim); 
   }
   anim();
 }
 
-function initTypeTaskGame(cv) {
+// STAGE 3
+function initTypeTask(cv) {
   const words = ["ไม่อยากเรียนRMSE", "พิมพ์ไวๆหน่อยเด้อ", "อยากนอนแล้ว"];
   let idx = 0;
   function update() {
-    cv.innerHTML = `<div style="margin-top:50px"><div style="font-size:2rem; color:var(--neon); margin-bottom:20px">${words[idx]}</div><input type="text" id="typer" autofocus autocomplete="off"></div>`;
+    cv.innerHTML = `<div style="margin-top:60px"><div style="font-size:2rem; color:var(--neon); margin-bottom:20px">${words[idx]}</div><input type="text" id="typer" autofocus autocomplete="off"></div>`;
     const input = document.getElementById("typer");
     input.focus();
     input.oninput = (e) => { if(e.target.value === words[idx]) { idx++; if(idx < words.length) update(); else finishStage(); } };
@@ -207,44 +235,58 @@ function initTypeTaskGame(cv) {
   update();
 }
 
-function initReflexTaskGame(cv) {
+// STAGE 4
+function initReflexTask(cv) {
   let count = 0;
-  function nextReflex() {
+  function next() {
     cv.style.background = "rgba(0,0,0,0.3)";
-    cv.innerHTML = `<p style="margin-top:140px">รอสัญญาณ... (สำเร็จแล้ว ${count}/3)</p>`;
+    cv.innerHTML = `<p style="margin-top:140px">รอสัญญาณ... (${count}/3)</p>`;
     setTimeout(() => {
       if(currentStage !== 3) return;
       cv.style.background = "var(--accent)";
-      cv.innerHTML = `<p style="margin-top:140px; font-weight:bold; font-size:1.5rem">คลิกเลย!!!</p>`;
-      cv.onmousedown = () => { cv.onmousedown = null; count++; if(count < 3) nextReflex(); else { cv.style.background="transparent"; finishStage(); } };
+      cv.innerHTML = `<p style="margin-top:140px; font-weight:bold; font-size:1.5rem">คลิกเดี๋ยวนี้!</p>`;
+      cv.onmousedown = () => { cv.onmousedown = null; count++; if(count < 3) next(); else { cv.style.background="transparent"; finishStage(); } };
     }, Math.random() * 2000 + 1000);
   }
-  nextReflex();
+  next();
 }
 
-function initMazeSGame(cv) {
+// STAGE 5 (Laser Evasion)
+function initLaserTask(cv) {
   cv.innerHTML = `
-    <div class="maze-container">
-      <svg width="600" height="300" viewBox="0 0 600 300">
-        <path class="maze-road" d="M 100 80 C 450 80, 450 220, 100 220 S 500 220, 500 220" />
-        <path id="mazeTrigger" class="maze-trigger" d="M 100 80 C 450 80, 450 220, 100 220 S 500 220, 500 220" />
+    <div class="maze-container" id="mazeCont">
+      <svg width="600" height="350" viewBox="0 0 600 350">
+        <path class="maze-road" d="M 100 80 H 500 V 270 H 100 Z" />
+        <path id="mazeTrigger" class="maze-trigger" d="M 100 80 H 500 V 270 H 100 Z" />
       </svg>
       <div id="start-node" class="maze-point">START</div>
       <div id="goal-node" class="maze-point">GOAL</div>
+      <div class="laser laser-v" style="height:100px; animation: laserMoveV 3s infinite ease-in-out;"></div>
+      <div class="laser laser-h" style="width:100px; animation: laserMoveH 4s infinite ease-in-out;"></div>
+      <div class="laser" id="rotLaser" style="width:120px; height:4px; top:50%; left:50%; transform-origin:center; animation: laserRotate 4s infinite linear;"></div>
     </div>
   `;
-  const trigger = document.getElementById("mazeTrigger");
+  const cont = document.getElementById("mazeCont");
+  const trig = document.getElementById("mazeTrigger");
   const goal = document.getElementById("goal-node");
-  trigger.onmouseleave = () => { alert("ออกนอกเส้นทาง! ลองใหม่อีกครั้ง"); };
-  goal.onmouseenter = () => { trigger.onmouseleave = null; finishStage(); };
+  const lasers = document.querySelectorAll(".laser");
+
+  trig.onmouseleave = () => { cont.classList.add("game-over-flash"); setTimeout(()=>cont.classList.remove("game-over-flash"), 500); };
+  lasers.forEach(l => l.onmouseenter = () => { cont.classList.add("game-over-flash"); setTimeout(()=>cont.classList.remove("game-over-flash"), 500); });
+  goal.onmouseenter = () => { trig.onmouseleave = null; finishStage(); };
 }
 
-// --- ฟังก์ชันบันทึกข้อมูลลง Database ---
+/* -----------------------------------------------------------
+   4. Netlify & Neon DB Integration (การบันทึกข้อมูล)
+----------------------------------------------------------- */
 async function exportData() {
-  const statusDiv = document.getElementById("save-status");
-  statusDiv.innerText = "กำลังเชื่อมต่อกับฐานข้อมูล...";
+  const statusMsg = document.getElementById("save-status");
+  const btn = document.getElementById("exportBtn");
   
-  const dataset = {
+  btn.disabled = true;
+  statusMsg.innerText = "⏳ กำลังเชื่อมต่อกับฐานข้อมูล Neon Database...";
+
+  const finalPayload = {
     mouse: computeFullStats(mouseIntervals),
     click: computeFullStats(clickIntervals),
     key: computeFullStats(keyIntervals),
@@ -255,20 +297,19 @@ async function exportData() {
     const response = await fetch("/.netlify/functions/save-behavior", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dataset)
+      body: JSON.stringify(finalPayload)
     });
 
     if (response.ok) {
-      statusDiv.style.color = "var(--neon)";
-      statusDiv.innerText = "บันทึกข้อมูลลง Neon Database สำเร็จ! ✅";
-      document.getElementById("exportBtn").disabled = true;
-      document.getElementById("exportBtn").style.opacity = "0.5";
+      statusMsg.style.color = "var(--neon)";
+      statusMsg.innerText = "สำเร็จ! ข้อมูลถูกบันทึกลงฐานข้อมูลแล้ว ✅";
     } else {
-      throw new Error("Server responded with error");
+      throw new Error("ระบบฐานข้อมูลขัดข้อง");
     }
   } catch (err) {
-    statusDiv.style.color = "var(--accent)";
-    statusDiv.innerText = "เกิดข้อผิดพลาด: " + err.message + " ❌";
+    statusMsg.style.color = "var(--accent)";
+    statusMsg.innerText = "❌ เกิดข้อผิดพลาด: " + err.message;
+    btn.disabled = false;
   }
 }
 
