@@ -139,9 +139,9 @@ function getStats(raw, type = "general") {
 /* --- GAME ENGINE --- */
 const stages = [
   { name: "🎯 Click Hunt", desc: "คลิกเป้าหมาย 10 จุด", type: "click" },
-  { name: "🛸 Orbital", desc: "ลากเมาส์ตามเป้าหมาย (โหมดความเร็วต่ำ)", time: 10, type: "move" },
+  { name: "🛸 Orbital", desc: "ลากเมาส์ตามเป้าหมาย", time: 10, type: "move" },
   { name: "⌨️ Speed Typer", desc: "พิมพ์คำที่กำหนดให้ถูกต้อง", type: "type" },
-  { name: "⚡ Reflex", desc: "คลิกเมื่อจอเปลี่ยนเป็นสีชมพู (3 ครั้ง)", type: "reflex" },
+  { name: "⚡ Reflex", desc: "คลิกเมื่อจอเปลี่ยนเป็นสีชมพู", type: "reflex" },
   { name: "🖋️ Steady Hand", desc: "ลากเมาส์ตามทาง: ห้ามออกนอกกรอบ!", type: "steady_path" }
 ];
 
@@ -273,7 +273,7 @@ async function autoExportData() {
     if (res.ok) {
       status.style.color = "var(--neon)";
       status.innerText = "✅ บันทึกข้อมูลสำเร็จ (Cleaned & Scaled)";
-      msg.innerText = "ข้อมูลถูกส่งไปยังฐานข้อมูล Neon เรียบร้อยแล้ว";
+      msg.innerText = "ข้อมูลถูกส่งไปยังฐานข้อมูลเรียบร้อยแล้ว";
     } else { throw new Error("Server Error"); }
   } catch (err) {
     status.style.color = "var(--accent)";
