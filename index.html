@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Behavior Lab: Laser Tunnel Edition</title>
+<title>Behavior Lab: Steady Hand Challenge</title>
 <style>
 :root { --neon: #00ffcc; --bg: #0f172a; --accent: #ff007a; }
 body {
@@ -41,20 +41,14 @@ button.main-btn {
 #exportBtn { display: none; margin: 20px auto; background: var(--accent); box-shadow: 0 0 15px var(--accent); }
 #exportBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* STAGE 5 Styles */
+/* STAGE 5: Steady Path Styles */
 .maze-container { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: crosshair; }
-.maze-road { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 45; stroke-linecap: round; stroke-linejoin: round; }
-.maze-trigger { fill: none; stroke: transparent; stroke-width: 50; pointer-events: stroke; stroke-linecap: round; stroke-linejoin: round; }
+.maze-road { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 40; stroke-linecap: round; stroke-linejoin: round; }
+.maze-trigger { fill: none; stroke: transparent; stroke-width: 45; pointer-events: stroke; stroke-linecap: round; stroke-linejoin: round; }
 .maze-point { width: 45px; height: 45px; border-radius: 50%; position: absolute; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; z-index: 30; }
 
-.laser { position: absolute; background: #ff0044; box-shadow: 0 0 12px #ff0044; z-index: 25; pointer-events: auto; }
-.laser-v { width: 4px; height: 80px; }
-
-@keyframes laserRotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-@keyframes laserSweep { 0%, 100% { left: 25%; } 50% { left: 75%; } }
-
 .game-over-flash { animation: flashEffect 0.4s; }
-@keyframes flashEffect { 0%, 100% { background: rgba(0,0,0,0.5); } 50% { background: rgba(255, 0, 68, 0.3); } }
+@keyframes flashEffect { 0%, 100% { background: rgba(0,0,0,0.5); } 50% { background: rgba(255, 0, 68, 0.4); } }
 
 input#typer {
   width: 80%; padding: 12px; border-radius: 10px; border: 2px solid var(--neon);
@@ -126,7 +120,7 @@ const stages = [
   { name: "🛸 Orbital", desc: "ลากเมาส์ตามเป้าหมาย (10 วินาที)", time: 10, type: "move" },
   { name: "⌨️ Speed Typer", desc: "พิมพ์คำที่กำหนดให้ถูกต้อง", type: "type" },
   { name: "⚡ Reflex", desc: "คลิกเมื่อจอเปลี่ยนเป็นสีชมพู (3 ครั้ง)", type: "reflex" },
-  { name: "🔥 Laser Tunnel", desc: "ทางเดินซิกแซก: ห้ามหลุดกรอบและห้ามโดนเลเซอร์หมุน!", type: "tunnel" }
+  { name: "🖋️ Steady Hand", desc: "ลากเมาส์ตามทางซิกแซก: ห้ามเลื่อนเมาส์ออกนอกกรอบสีขาว!", type: "steady_path" }
 ];
 
 let currentStage = 0;
@@ -137,7 +131,7 @@ function renderStage() {
     document.getElementById("challengeArea").innerHTML = `
       <div class="card">
         <h2>ทดสอบเสร็จสิ้น! 🏆</h2>
-        <p>คุณคือผู้รอดชีวิตจากอุโมงค์เลเซอร์! ข้อมูลพร้อมบันทึกแล้ว</p>
+        <p>คุณมีความนิ่งที่ยอดเยี่ยม! ข้อมูลพฤติกรรมพร้อมสำหรับการบันทึกแล้ว</p>
       </div>`;
     document.getElementById("exportBtn").style.display = "block";
     return;
@@ -164,7 +158,7 @@ function startStage() {
   if(s.type === "move") initMove(canvas);
   if(s.type === "type") initType(canvas);
   if(s.type === "reflex") initReflex(canvas);
-  if(s.type === "tunnel") initTunnel(canvas);
+  if(s.type === "steady_path") initSteadyPath(canvas);
 
   if(s.time) {
     let timeLeft = s.time;
@@ -209,7 +203,7 @@ function initMove(cv) {
 }
 
 function initType(cv) {
-  const words = ["มหาวิทยาลัย", "วิจัยพฤติกรรม", "ข้อมูลดิจิทัล"];
+  const words = ["ระบบฐานข้อมูล", "กลไกพฤติกรรม", "นวัตกรรมใหม่"];
   let idx = 0;
   function update() {
     cv.innerHTML = `<div style="margin-top:60px"><div style="font-size:2rem; color:var(--neon); margin-bottom:15px">${words[idx]}</div><input type="text" id="typer" autofocus autocomplete="off"></div>`;
@@ -228,14 +222,14 @@ function initReflex(cv) {
     setTimeout(() => {
       if(currentStage !== 3) return;
       cv.style.background = "var(--accent)";
-      cv.innerHTML = `<p style="margin-top:140px; font-weight:bold; font-size:1.8rem">คลิก!!!</p>`;
+      cv.innerHTML = `<p style="margin-top:140px; font-weight:bold; font-size:1.8rem">CLICK!!!</p>`;
       cv.onmousedown = () => { cv.onmousedown = null; count++; if(count < 3) next(); else { cv.style.background="transparent"; finishStage(); } };
     }, Math.random() * 2500 + 1000);
   }
   next();
 }
 
-function initTunnel(cv) {
+function initSteadyPath(cv) {
   cv.innerHTML = `
     <div class="maze-container" id="mazeCont">
       <svg width="600" height="360" viewBox="0 0 600 360">
@@ -244,27 +238,29 @@ function initTunnel(cv) {
       </svg>
       <div id="start-node" class="maze-point" style="left:38px; top:38px; background:var(--accent);">START</div>
       <div id="goal-node" class="maze-point" style="right:38px; bottom:38px; background:var(--neon); color:#000;">GOAL</div>
-      
-      <div class="laser" style="width:90px; height:4px; top:180px; left:40px; transform-origin:center; animation: laserRotate 1.8s infinite linear;"></div>
-      <div class="laser" style="width:90px; height:4px; top:180px; right:40px; transform-origin:center; animation: laserRotate 2.2s infinite linear;"></div>
-      
-      <div class="laser laser-v" style="top:140px; animation: laserSweep 2s infinite ease-in-out;"></div>
-      <div class="laser laser-v" style="top:260px; animation: laserSweep 1.5s infinite ease-in-out; animation-delay: 0.5s;"></div>
     </div>
   `;
   const cont = document.getElementById("mazeCont");
   const trig = document.getElementById("mazeTrigger");
   const goal = document.getElementById("goal-node");
-  const lasers = document.querySelectorAll(".laser");
 
   const fail = () => {
     cont.classList.add("game-over-flash");
     setTimeout(() => cont.classList.remove("game-over-flash"), 400);
+    // (Optional) คุณสามารถเลือกได้ว่าจะให้กลับไปจุด Start หรือแค่เตือนแฟลชแดง
   };
 
-  trig.onmouseleave = (e) => { if(e.relatedTarget !== goal) fail(); };
-  lasers.forEach(l => l.onmouseenter = () => fail());
-  goal.onmouseenter = () => { trig.onmouseleave = null; finishStage(); };
+  // ตรวจจับเมื่อเมาส์ออกจากเส้นทาง SVG
+  trig.onmouseleave = (e) => {
+    // ถ้าไม่ได้ออกไปโดนจุด Goal (จุดจบ) จะถือว่าแพ้
+    if(e.relatedTarget !== goal) fail();
+  };
+
+  // เมื่อถึงเส้นชัย
+  goal.onmouseenter = () => {
+    trig.onmouseleave = null; 
+    finishStage();
+  };
 }
 
 /* --- DATABASE EXPORT --- */
@@ -289,7 +285,7 @@ async function exportData() {
     });
     if (res.ok) {
       status.style.color = "var(--neon)";
-      status.innerText = "บันทึกข้อมูลสำเร็จ! ขอบคุณที่ร่วมการทดสอบ ✅";
+      status.innerText = "บันทึกข้อมูลสำเร็จ! ✅";
     } else { throw new Error("Server Error"); }
   } catch (err) {
     status.style.color = "var(--accent)";
