@@ -449,7 +449,7 @@
       };
 
       try {
-        const res = await fetch("/api/save", {
+        const res = await fetch("/save", { // แก้ไขจุดนี้เพื่อเชื่อม Cloudflare Functions
           method: "POST",
           headers: {
             "Content-Type": "application/json"
