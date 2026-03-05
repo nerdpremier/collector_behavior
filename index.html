@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Behavior-Collector</title>
+  <title>Behavior-Collector Pro</title>
   <style>
     :root {
       --neon: #00ffcc;
@@ -174,6 +174,13 @@
       margin-bottom: 10px;
       display: block;
     }
+
+    .key-hint {
+        font-size: 3rem;
+        margin-top: 50px;
+        color: var(--accent);
+        text-shadow: 0 0 10px var(--accent);
+    }
   </style>
 </head>
 
@@ -268,7 +275,8 @@
       };
     }
 
-    const stages = [{
+    const stages = [
+      {
         name: "🎯 Click Hunt",
         desc: "คลิกเป้าหมาย 10 จุด",
         type: "click"
@@ -281,13 +289,13 @@
       },
       {
         name: "⌨️ Speed Typer",
-        desc: "พิมพ์คำที่กำหนดให้ถูกต้อง",
+        desc: "พิมพ์คำที่ปรากฏให้ถูกต้อง (สุ่มคำ)",
         type: "type"
       },
       {
-        name: "⚡ Reflex",
-        desc: "คลิกเมื่อจอเปลี่ยนเป็นสีชมพู",
-        type: "reflex"
+        name: "🎹 Rhythm Keeper",
+        desc: "กดปุ่มค้างและปล่อยให้ตรงจังหวะ 5 ครั้ง",
+        type: "key_rhythm"
       },
       {
         name: "🖋️ Steady Hand",
@@ -316,7 +324,7 @@
       if (s.type === "click") initClick(canvas);
       if (s.type === "move") initMove(canvas);
       if (s.type === "type") initType(canvas);
-      if (s.type === "reflex") initReflex(canvas);
+      if (s.type === "key_rhythm") initKeyRhythm(canvas);
       if (s.type === "steady_path") initSteadyPath(canvas);
       if (s.time) {
         let timeLeft = s.time;
@@ -337,7 +345,6 @@
 
     function initClick(cv) {
       let count = 0;
-
       function spawn() {
         cv.innerHTML = `<div style="padding:15px">แต้ม: ${count}/10</div>`;
         let t = document.createElement("div");
@@ -361,7 +368,6 @@
       t.innerText = "🛸";
       cv.appendChild(t);
       let a = 0;
-
       function anim() {
         if (currentStage !== 1) return;
         a += 0.015;
@@ -373,7 +379,9 @@
     }
 
     function initType(cv) {
-      const words = ["Cybersecurity", "ILoveRMSE", "Internship"];
+      const pool = ["Cybersecurity", "Network", "Programming", "Behavioral", "Authentication", "CloudComputing", "MachineLearning", "Encryption", "Database", "Infrastructure"];
+      // สุ่มคำจาก Pool มา 3 คำ
+      const words = [...pool].sort(() => 0.5 - Math.random()).slice(0, 3);
       let idx = 0;
 
       function update() {
@@ -391,28 +399,51 @@
       update();
     }
 
-    function initReflex(cv) {
-      let count = 0;
+    function initKeyRhythm(cv) {
+        let count = 0;
+        const keys = ["F", "J", "Space", "K", "D"];
+        
+        function next() {
+            let k = keys[count];
+            cv.innerHTML = `<div style="margin-top:60px"><p>กดปุ่มค้างไว้จนกว่าวงกลมจะเต็ม</p><div class="key-hint">${k === "Space" ? "⎵" : k}</div><div id="keyProg" style="width:0%; height:10px; background:var(--neon); margin:20px auto; border-radius:5px;"></div></div>`;
+            
+            let pressing = false;
+            let progress = 0;
+            let interval = null;
 
-      function next() {
-        cv.style.background = "rgba(0,0,0,0.3)";
-        cv.innerHTML = `<p style="margin-top:140px">เตรียมตัว... (${count}/3)</p>`;
-        setTimeout(() => {
-          if (currentStage !== 3) return;
-          cv.style.background = "var(--accent)";
-          cv.innerHTML = `<p style="margin-top:140px; font-weight:bold; font-size:1.8rem">CLICK!!!</p>`;
-          cv.onmousedown = () => {
-            cv.onmousedown = null;
-            count++;
-            if (count < 3) next();
-            else {
-              cv.style.background = "transparent";
-              finishStage();
-            }
-          };
-        }, Math.random() * 2500 + 1000);
-      }
-      next();
+            const handleDown = (e) => {
+                let targetKey = k === "Space" ? " " : k.toLowerCase();
+                if (e.key.toLowerCase() === targetKey && !pressing) {
+                    pressing = true;
+                    interval = setInterval(() => {
+                        progress += 2;
+                        document.getElementById("keyProg").style.width = progress + "%";
+                        if (progress >= 100) {
+                            clearInterval(interval);
+                            window.removeEventListener("keydown", handleDown);
+                            window.removeEventListener("keyup", handleUp);
+                            count++;
+                            if (count < keys.length) next();
+                            else finishStage();
+                        }
+                    }, 20);
+                }
+            };
+
+            const handleUp = (e) => {
+                let targetKey = k === "Space" ? " " : k.toLowerCase();
+                if (e.key.toLowerCase() === targetKey) {
+                    pressing = false;
+                    clearInterval(interval);
+                    progress = 0;
+                    if (document.getElementById("keyProg")) document.getElementById("keyProg").style.width = "0%";
+                }
+            };
+
+            window.addEventListener("keydown", handleDown);
+            window.addEventListener("keyup", handleUp);
+        }
+        next();
     }
 
     function initSteadyPath(cv) {
@@ -449,23 +480,17 @@
       };
 
       try {
-        const res = await fetch("/api/save", {
+        const res = await fetch("/save", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        const text = await res.text();
-        if (!text) throw new Error("Empty Response");
-        const result = JSON.parse(text);
-
         if (res.ok) {
           status.style.color = "var(--neon)";
           status.innerText = "✅ บันทึกสำเร็จ!";
           msg.innerText = "ข้อมูลพฤติกรรมถูกส่งไปยังระบบเรียบร้อยแล้ว";
         } else {
-          throw new Error(result.error || "Server Error");
+          throw new Error("Server Error");
         }
       } catch (err) {
         status.style.color = "var(--accent)";
