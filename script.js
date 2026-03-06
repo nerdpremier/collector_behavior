@@ -75,7 +75,7 @@ const stages = [
     { name: "🎯 Click Hunt", desc: "คลิกเป้าหมาย 10 จุด", type: "click" },
     { name: "🛸 Orbital", desc: "ลากเมาส์ตามเป้าหมาย", time: 10, type: "move" },
     { name: "⌨️ Speed Typer", desc: "พิมพ์คำที่ปรากฏให้ถูกต้อง", type: "type" },
-    { name: "🎹 Rhythm Keeper", desc: "กดปุ่มค้างและปล่อยให้ตรงจังหวะ", type: "key_rhythm" },
+    { name: "🎹 Rhythm Keeper", desc: "กดปุ่มค้าง", type: "key_rhythm" },
     { name: "🖋️ Steady Hand", desc: "ลากเมาส์ตามทาง: ห้ามออกนอกกรอบ!", type: "steady_path" }
 ];
 let currentStage = 0, timer = null;
