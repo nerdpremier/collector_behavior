@@ -1,9 +1,7 @@
-// --- Collector Variables ---
 let mouseIntervals = [], clickIntervals = [], keyIntervals = [], idleDurations = [];
 let lastMouse = null, lastClick = null, lastKey = null, lastActivity = Date.now();
 const sessionStart = Date.now();
 
-// --- Listeners ---
 document.addEventListener("mousemove", () => {
     let now = Date.now();
     if (lastMouse) mouseIntervals.push(now - lastMouse);
@@ -28,7 +26,6 @@ setInterval(() => {
     }
 }, 1000);
 
-// --- Math Helpers ---
 function percentile(arr, p) {
     let s = [...arr].sort((a, b) => a - b);
     if (!s.length) return 0;
@@ -63,14 +60,12 @@ function getStats(raw, type = "general") {
         general: { max_m: 1000, max_s: 300 }
     };
     const L = limits[type] || limits.general;
-    // ปรับเหลือ 3 ตำแหน่ง
     return {
         m: parseFloat((Math.min(Math.max(m / L.max_m, 0), 1)).toFixed(3)),
         s: parseFloat((Math.min(Math.max(s / L.max_s, 0), 1)).toFixed(3))
     };
 }
 
-// --- Game Engine ---
 const stages = [
     { name: "คลิกเป้าหมาย 10 จุด 🎯", desc: "", type: "click" },
     { name: "ลากเมาส์ตามเป้าหมาย 🛸", desc: "", time: 10, type: "move" },
@@ -236,26 +231,21 @@ function initSteadyPath(cv) {
     const goal = document.getElementById("goal-node");
     const start = document.getElementById("start-node");
     
-    // เตรียมความยาวเส้น
     const pathLength = progressPath.getTotalLength();
     progressPath.style.strokeDasharray = pathLength;
     progressPath.style.strokeDashoffset = pathLength;
 
     let isStarted = false;
 
-    // ฟังก์ชันอัปเดตเส้นสีเขียวตามตำแหน่งเมาส์
     trig.onmousemove = (e) => {
         if (!isStarted) return;
         
-        // คำนวณหาจุดที่ใกล้ที่สุดบนเส้น SVG เทียบกับพิกัดเมาส์
         const svg = trig.ownerSVGElement;
         const pt = svg.createSVGPoint();
         pt.x = e.clientX;
         pt.y = e.clientY;
         const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
         
-        // หาจุดที่ใกล้ที่สุดบน Path เพื่อเอาค่าระยะทาง (Distance)
-        // หมายเหตุ: วิธีนี้เป็นแบบประมาณการที่เร็วและลื่นไหล
         const totalSteps = 200; 
         let minDest = Infinity;
         let bestLength = 0;
@@ -270,7 +260,6 @@ function initSteadyPath(cv) {
             }
         }
         
-        // อัปเดตเส้น Progress (วาดเส้นออกมาตามระยะที่เมาส์ลากไปถึง)
         progressPath.style.strokeDashoffset = pathLength - bestLength;
     };
 
@@ -283,7 +272,6 @@ function initSteadyPath(cv) {
     trig.onmouseleave = (e) => {
         if (isStarted && e.relatedTarget !== goal) {
             isStarted = false;
-            // รีเซ็ตเส้นกลับเป็น 0
             progressPath.style.strokeDashoffset = pathLength;
             start.style.background = "red";
             start.innerText = "RETRY";

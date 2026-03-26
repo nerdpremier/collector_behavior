@@ -5,7 +5,6 @@ import path from 'path';
 
 const { Client } = pkg;
 
-// คำนวณ HMAC-SHA256 สำหรับ verify ลายเซ็นจาก SSO
 function computeSignature(secret, timestamp, nonce, body) {
     const bodyHash = crypto.createHash('sha256').update(body).digest('hex');
     const base = `${timestamp}\n${nonce}\n${bodyHash}`;
@@ -16,7 +15,6 @@ let cachedModel = null;
 let cachedModelPath = null;
 
 function loadModel() {
-    // allow override via env for Railway/Vercel
     const envPath = process.env.RISK_MODEL_PATH;
     const modelPath = envPath
         ? path.resolve(process.cwd(), envPath)
@@ -32,13 +30,11 @@ function loadModel() {
 }
 
 function sigmoid(x) {
-    // ป้องกัน overflow
     if (x > 40) return 1;
     if (x < -40) return 0;
     return 1 / (1 + Math.exp(-x));
 }
 
-// AI-based risk scoring (logistic regression inference)
 function computeRiskDecision(payload) {
     const { features = {}, ip, username } = payload || {};
 
@@ -46,14 +42,12 @@ function computeRiskDecision(payload) {
     try {
         model = loadModel();
     } catch (e) {
-        // ถ้าโหลด model ไม่ได้ ให้ fail-open เป็น low (ไม่ทำให้ทั้งระบบเดี้ยง)
         return { action: 'low', score: 0, model_version: 'missing', meta: { ip, username } };
     }
 
     const weights = model.weights || {};
     const bias = typeof model.bias === 'number' ? model.bias : 0;
 
-    // linear combination
     let z = bias;
     const featureNames = Array.isArray(model.features) ? model.features : Object.keys(weights);
     for (const name of featureNames) {
@@ -89,14 +83,12 @@ export default async function handler(req, res) {
         ssl: { rejectUnauthorized: false }
     });
 
-    // raw body สำหรับตรวจลายเซ็นจาก SSO (Vercel/Node 18+: body อาจถูก parse แล้ว)
     const rawBody = JSON.stringify(req.body || {});
 
     try {
         await client.connect();
         const data = req.body || {};
 
-        // ── 1) Verify ลายเซ็นจาก SSO (ป้องกัน spoof ระหว่าง SSO ↔ Risk Engine) ──
         const sharedSecret = process.env.RISK_ENGINE_SHARED_SECRET;
         if (sharedSecret) {
             const tsHeader   = req.headers['x-risk-timestamp'];
@@ -116,7 +108,6 @@ export default async function handler(req, res) {
             const expected = computeSignature(sharedSecret, String(tsHeader), String(nonce), rawBody);
             const provided = sigHeader.startsWith('v1=') ? sigHeader.slice(3) : sigHeader;
 
-            // timingSafeEqual จะ throw ถ้าความยาวต่างกัน → ต้อง guard ก่อน
             const expectedBuf = Buffer.from(expected, 'utf8');
             const providedBuf = Buffer.from(provided, 'utf8');
             const ok = (expectedBuf.length === providedBuf.length) &&
@@ -126,7 +117,6 @@ export default async function handler(req, res) {
             }
         }
 
-        // ── 2) Branch ตามรูปแบบ payload ─────────────────────────────────────
         const isContinuousPayload =
             data &&
             Array.isArray(data.events) &&
@@ -134,10 +124,8 @@ export default async function handler(req, res) {
             typeof data.session_jti === 'string';
 
         if (isContinuousPayload) {
-            // Risk Engine path ใหม่: รับ payload จาก SSO behavior proxy
             const { action, score, model_version } = computeRiskDecision(data);
 
-            // บันทึกลง behavior_logs เพื่อ analytics / tuning model ภายหลัง
             const logQuery = `
                 INSERT INTO behavior_logs (mouse, click, key, idle, features) 
                 VALUES ($1, $2, $3, $4, $5)
@@ -169,7 +157,6 @@ export default async function handler(req, res) {
             return res.status(200).json({ action, score, model_version });
         }
 
-        // ── 3) Legacy path: รองรับ payload เดิมจาก collector_behavior ──────
         const query = `
             INSERT INTO behavior_logs (mouse, click, key, idle, features) 
             VALUES ($1, $2, $3, $4, $5)
