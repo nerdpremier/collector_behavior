@@ -148,7 +148,7 @@ export default async function handler(req, res) {
                 {},            // click
                 {},            // key
                 {},            // idle
-                logValue       // เก็บ payload ใหม่ในคอลัมน์ features (JSONB)
+                logValue       // features (JSONB)
             ];
 
             await client.query(logQuery, values);

@@ -159,7 +159,7 @@ function initKeyRhythm(cv) {
     
     function next() {
         let k = keys[count];
-        let displayKey = k === "Space" ? "␣" : k; // ใช้สัญลักษณ์สเปซบาร์ที่สวยขึ้น
+        let displayKey = k === "Space" ? "␣" : k;
         
         cv.innerHTML = `
             <div style="margin-top:40px">
@@ -179,10 +179,10 @@ function initKeyRhythm(cv) {
             let target = k === "Space" ? " " : k.toLowerCase();
             if (e.key.toLowerCase() === target && !pressing) {
                 pressing = true;
-                keyVisual.classList.add("active"); // เพิ่ม Effect เมื่อกด
+                keyVisual.classList.add("active");
                 
                 interval = setInterval(() => {
-                    progress += 2.5; // ความเร็วในการชาร์จ
+                    progress += 2.5;
                     if(keyProg) keyProg.style.width = progress + "%";
                     
                     if (progress >= 100) {
@@ -200,7 +200,7 @@ function initKeyRhythm(cv) {
             let target = k === "Space" ? " " : k.toLowerCase();
             if (e.key.toLowerCase() === target) {
                 pressing = false;
-                keyVisual.classList.remove("active"); // เอา Effect ออกเมื่อปล่อย
+                keyVisual.classList.remove("active");
                 clearInterval(interval);
                 progress = 0;
                 if(keyProg) keyProg.style.width = "0%";
@@ -282,7 +282,7 @@ function initSteadyPath(cv) {
     goal.onmouseenter = () => {
         if (isStarted) {
             isStarted = false;
-            progressPath.style.strokeDashoffset = 0; // เติมให้เต็ม
+            progressPath.style.strokeDashoffset = 0;
             finishStage();
         }
     };
